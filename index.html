@@ -747,6 +747,8 @@ function hit(names) {
   // 罰の重さを上乗せ（低確率で 半分一気 / 一気飲み）
   const penalty = decidePenalty();
   const isSpecial = penalty.key !== 'normal';
+  // ストック加算量：通常1 / 半分一気2 / 一気飲み4
+  lastStockAmount = penalty.key === 'ikki' ? 4 : penalty.key === 'half' ? 2 : 1;
   const displaySub = isSpecial ? `${baseSub}　${penalty.label}` : baseSub;
   const speech = isSpecial ? `${callPhrase} ${penalty.speech}` : callPhrase;
 
@@ -790,7 +792,7 @@ function hit(names) {
   setTimeout(() => {
     if (!playEl.classList.contains('show')) return;
     if (state.fullStock) {
-      lastPickNames.forEach(n => { stocks[n] = (stocks[n] || 0) + 1; });
+      lastPickNames.forEach(n => { stocks[n] = (stocks[n] || 0) + lastStockAmount; });
       renderStocks();
       resumeGame();
     } else {
@@ -835,7 +837,8 @@ function scheduleNext() {
 const INTERVAL_SEC = 60;
 let intervalTimer = null, intervalRemaining = 0;
 let lastPickNames = [];           // 直近に呼ばれた人（ストック加算対象）
-const stocks = {};                // { 名前: 後で飲む杯数 }
+let lastStockAmount = 1;          // 直近の罰の重さ（通常1 / 半分一気2 / 一気飲み4）
+const stocks = {};                // { 名前: ストック量 }
 
 function clearIntervalState() {
   clearInterval(intervalTimer);
@@ -862,9 +865,9 @@ function updateIntervalLabel() {
   $('intervalCount').textContent = `🍶 飲む・注ぐタイム　${who}あと ${intervalRemaining} 秒で自動再開`;
 }
 
-/* ストック：今は飲めない → 呼ばれた人の「後で飲む杯数」を+1して再開 */
+/* ストック：今は飲めない → 呼ばれた人に罰の量（通常1/半分一気2/一気飲み4）を加算して再開 */
 function stockOut() {
-  lastPickNames.forEach(n => { stocks[n] = (stocks[n] || 0) + 1; });
+  lastPickNames.forEach(n => { stocks[n] = (stocks[n] || 0) + lastStockAmount; });
   renderStocks();
   resumeGame();
 }
@@ -888,7 +891,7 @@ function renderStocks() {
   entries.forEach(([n, c]) => {
     const pill = document.createElement('button');
     pill.className = 'stock-pill';
-    pill.innerHTML = `${escapeHtml(n)} <b>${c}</b>杯 <span class="minus">−</span>`;
+    pill.innerHTML = `${escapeHtml(n)} <b>${c}</b> <span class="minus">−</span>`;
     pill.onclick = () => consumeStock(n);
     el.appendChild(pill);
   });

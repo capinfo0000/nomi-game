@@ -541,7 +541,7 @@ function speak(text, onend) {
      audio/everyone.* … 「全員アウトー！」の声
      audio/call1.* 〜 call12.* … コール（ボタンで押すとランダム再生。何種類でもOK）
    ※拡張子は mp3 / m4a / wav / ogg のどれでも可（最初に読めたものを採用） */
-const CLIP_KEYS = ['suspense', 'buzzer', 'out', 'ikki', 'half', 'everyone'];
+const CLIP_KEYS = ['buzzer', 'out', 'ikki', 'half', 'everyone'];
 const CALL_KEYS = Array.from({ length: 12 }, (_, i) => `call${i + 1}`); // コール用（任意）
 const CLIP_EXTS = ['mp3', 'm4a', 'wav', 'ogg'];
 const clips = {}; // key -> HTMLAudioElement（使用可）/ false（無し）/ undefined（未判定）
@@ -671,7 +671,7 @@ function decidePeople() {
   return shuffle(state.members).slice(0, count);
 }
 
-const SUSPENSE_SEC = 2.2;
+const SUSPENSE_SEC = 1.3;
 let suspenseTimer = null;
 
 /* 罰の重さを抽選：通常アウト / 低確率で半分一気・一気飲み（確率はレベル依存） */
@@ -698,8 +698,8 @@ function announce() {
   sub.style.display = 'none';
   stamp.classList.remove('show');
   glass.style.display = 'block';
-  glass.textContent = '🥁';
-  suspense(SUSPENSE_SEC);
+  glass.textContent = '👀';
+  // ドラム/ためる音は鳴らさない（デデーンのみ）
 
   clearTimeout(suspenseTimer);
   suspenseTimer = setTimeout(() => hit(names), SUSPENSE_SEC * 1000);

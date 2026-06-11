@@ -783,7 +783,7 @@ function hit(names) {
     } else {
       speak(speech); // 同梱クリップ無し＝従来どおり全文TTS
     }
-  }, 900);
+  }, 2000); // デデーンの2秒後に名前を呼ぶ
 
   history.unshift({ t: fmtTime(Date.now() - startTime), label: displayName });
   renderHistory();

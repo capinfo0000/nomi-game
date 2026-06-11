@@ -248,8 +248,12 @@
   .stock-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
   .stock-title { width: 100%; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
   .stock-pill { background: rgba(61,123,255,0.18); border: 1px solid rgba(61,240,255,0.35);
-    border-radius: 999px; padding: 5px 12px; font-size: 13px; }
+    border-radius: 999px; padding: 6px 8px 6px 13px; font-size: 13px; color: var(--text);
+    font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+  .stock-pill:active { transform: scale(0.94); background: rgba(255,85,96,0.25); }
   .stock-pill b { color: var(--cyan); font-size: 15px; }
+  .stock-pill .minus { display: grid; place-items: center; width: 20px; height: 20px;
+    border-radius: 50%; background: rgba(255,255,255,0.14); font-size: 15px; line-height: 1; }
 
   .history { margin-top: 10px; max-height: 92px; overflow-y: auto; }
   .history-item { font-size: 13px; color: var(--muted); padding: 3px 0; }
@@ -371,7 +375,7 @@ const state = {
 /* レベルごとの確率設定 */
 // solo = 1人だけ指名になる確率（低いほど複数人が出やすい）/ maxCap = 呼び出し間隔の上限(分)
 const LEVELS = {
-  light:  { ikki: 0.02, half: 0.08, everyone: 0.05, solo: 0.75, maxCap: 10, desc: '🍵 小酒：一気はほぼ無し。ほぼ1人ずつ。やさしく楽しむモード。' },
+  light:  { ikki: 0.02, half: 0.08, everyone: 0.05, solo: 0.75, maxCap: 15, desc: '🍵 小酒：一気はほぼ無し。ほぼ1人ずつ。呼び出しは最大15分間隔。やさしく楽しむモード。' },
   normal: { ikki: 0.07, half: 0.20, everyone: 0.12, solo: 0.55, maxCap: 10, desc: '🍺 普通：たまに一気・半分一気が出るバランス型。' },
   heavy:  { ikki: 0.20, half: 0.45, everyone: 0.22, solo: 0.25, maxCap: 5,  desc: '🔥 酒豪：一気・全員アウト・複数人指名が頻発。呼び出しは最大5分間隔。覚悟する人向け。' },
 };
@@ -776,12 +780,29 @@ function resumeGame() {
 }
 
 function renderStocks() {
-  const entries = Object.entries(stocks).filter(([, c]) => c > 0);
   const el = $('stockList');
-  if (!entries.length) { el.innerHTML = ''; return; }
-  el.innerHTML = '<div class="stock-title">📥 ストック（後で飲む）</div>' +
-    entries.sort((a, b) => b[1] - a[1])
-      .map(([n, c]) => `<span class="stock-pill">${escapeHtml(n)} <b>${c}</b>杯</span>`).join('');
+  el.innerHTML = '';
+  const entries = Object.entries(stocks).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return;
+  const title = document.createElement('div');
+  title.className = 'stock-title';
+  title.textContent = '📥 ストック（後で飲む・タップで −1）';
+  el.appendChild(title);
+  entries.forEach(([n, c]) => {
+    const pill = document.createElement('button');
+    pill.className = 'stock-pill';
+    pill.innerHTML = `${escapeHtml(n)} <b>${c}</b>杯 <span class="minus">−</span>`;
+    pill.onclick = () => consumeStock(n);
+    el.appendChild(pill);
+  });
+}
+
+/* ストックを1杯消化（飲んだ分を減らす。0になったら消える） */
+function consumeStock(name) {
+  if (!stocks[name]) return;
+  stocks[name]--;
+  if (stocks[name] <= 0) delete stocks[name];
+  renderStocks();
 }
 
 function fmtTime(ms) {

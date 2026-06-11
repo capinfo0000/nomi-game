@@ -752,10 +752,9 @@ function hit(names) {
   const displaySub = isSpecial ? `${baseSub}　${penalty.label}` : baseSub;
   const speech = isSpecial ? `${callPhrase} ${penalty.speech}` : callPhrase;
 
-  // 一気飲み・半分一気は演出を強める
+  // 一気飲み・半分一気は演出を強める（デデーンが重ならないよう追い打ちはしない）
   if (isSpecial) {
     if (navigator.vibrate) navigator.vibrate([100, 60, 100, 60, 200]);
-    setTimeout(buzzer, 350); // ブザー追い打ち
     stamp.textContent = penalty.key === 'ikki' ? '一気ーッ！' : '半分一気！';
   } else {
     stamp.textContent = 'アウトー！';
@@ -776,6 +775,11 @@ function hit(names) {
     (penalty.key === 'ikki' && hasClip('ikki')) ? 'ikki' :
     (penalty.key === 'half' && hasClip('half')) ? 'half' :
     (hasClip('out') ? 'out' : null);
+  // デデーン（buzzer）が鳴り終わってから名前を呼ぶ（被らないように音源の長さに合わせる）
+  const bclip = clips['buzzer'];
+  const buzzerMs = (bclip instanceof Audio && bclip.duration && isFinite(bclip.duration))
+    ? bclip.duration * 1000 + 250  // 音源長 + 少し余白
+    : 1400;                         // 合成ブザー時のフォールバック
   setTimeout(() => {
     if (voiceKey) {
       // 名前を読み上げてから、録音した掛け声を再生
@@ -783,12 +787,15 @@ function hit(names) {
     } else {
       speak(speech); // 同梱クリップ無し＝従来どおり全文TTS
     }
-  }, 2000); // デデーンの2秒後に名前を呼ぶ
+  }, buzzerMs);
 
   history.unshift({ t: fmtTime(Date.now() - startTime), label: displayName });
   renderHistory();
 
-  // 演出が終わってから：完全ストックモードなら自動加算して即次へ、通常は飲む・注ぐタイム
+  // 名前読み上げ（＋掛け声）が終わる頃合いを見て、休憩 or 完全ストック処理へ
+  const voiceText = voiceKey ? namePart : speech;
+  const voiceMs = Math.max(1200, voiceText.length * 130) + (voiceKey ? 1200 : 0);
+  const afterMs = buzzerMs + voiceMs + 400;
   setTimeout(() => {
     if (!playEl.classList.contains('show')) return;
     if (state.fullStock) {
@@ -798,7 +805,7 @@ function hit(names) {
     } else {
       startInterval();
     }
-  }, 2600);
+  }, afterMs);
 }
 
 function renderHistory() {

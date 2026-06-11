@@ -91,6 +91,14 @@
   }
   input[type="text"]:focus, input[type="number"]:focus { border-color: var(--accent); }
   #maxPeopleInput { width: 100px; margin-top: 8px; flex: none; }
+  .voice-row { display: flex; gap: 8px; margin-top: 8px; }
+  select {
+    flex: 1; min-width: 0; background: var(--bg2); color: var(--text);
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
+    font-size: 15px; padding: 11px 12px; outline: none; -webkit-appearance: none; appearance: none;
+  }
+  select:focus { border-color: var(--accent); }
+  #voicePreview { flex: none; white-space: nowrap; }
   .btn {
     border: none;
     border-radius: 12px;
@@ -308,11 +316,31 @@
       </span>
     </div>
     <div class="row">
+      <div class="slider-wrap">
+        <label>完全ストックモード 📥</label>
+        <div class="sub">その場では飲まず、アウトを全部ストックに自動加算。後でまとめて消化。</div>
+      </div>
+      <span class="toggle">
+        <input type="checkbox" id="fullStock" />
+        <span class="track"></span><span class="thumb"></span>
+      </span>
+    </div>
+    <div class="row">
       <label>音声で読み上げる 🔊</label>
       <span class="toggle">
         <input type="checkbox" id="useVoice" checked />
         <span class="track"></span><span class="thumb"></span>
       </span>
+    </div>
+    <div class="row">
+      <div class="slider-wrap">
+        <label>読み上げの声</label>
+        <div class="voice-row">
+          <select id="voiceSelect"></select>
+          <button class="btn btn-ghost" id="voicePreview" type="button">試聴 ▶</button>
+        </div>
+        <div class="sub">使える声は端末・ブラウザによって異なります</div>
+      </div>
     </div>
   </div>
 
@@ -369,6 +397,8 @@ const state = {
   maxPeople: 1,
   allowEveryone: true,
   useVoice: true,
+  voiceURI: '',    // 読み上げ音声（空＝自動）
+  fullStock: false, // 完全ストックモード（全アウトを自動でストック）
   level: 'normal', // light / normal / heavy
 };
 
@@ -400,7 +430,7 @@ const memberList = $('memberList');
 const emptyMsg = $('emptyMsg');
 const startBtn = $('startBtn');
 const maxPeopleInput = $('maxPeopleInput');
-const allowEveryone = $('allowEveryone'), useVoice = $('useVoice');
+const allowEveryone = $('allowEveryone'), useVoice = $('useVoice'), fullStock = $('fullStock');
 
 /* ===================== MEMBERS UI ===================== */
 function renderMembers() {
@@ -461,7 +491,9 @@ function syncSettingsUI() {
   maxPeopleInput.value = state.maxPeople;
   allowEveryone.checked = state.allowEveryone;
   useVoice.checked = state.useVoice;
+  fullStock.checked = state.fullStock;
   syncLevelUI();
+  if ('speechSynthesis' in window) pickVoice(); // 保存された声を反映
 }
 
 function syncLevelUI() {
@@ -487,27 +519,94 @@ function applyMaxPeople() {
 maxPeopleInput.onchange = applyMaxPeople;
 allowEveryone.onchange = () => { state.allowEveryone = allowEveryone.checked; save(); };
 useVoice.onchange = () => { state.useVoice = useVoice.checked; save(); };
+fullStock.onchange = () => { state.fullStock = fullStock.checked; save(); };
+$('voiceSelect').onchange = (e) => { state.voiceURI = e.target.value; pickVoice(); save(); };
+$('voicePreview').onclick = () => {
+  // 試聴は本番フラグに関わらず鳴らす
+  const wasOff = !state.useVoice;
+  if (wasOff) state.useVoice = true;
+  speak('テスト。よねくら、アウトー！');
+  if (wasOff) state.useVoice = false;
+};
 
 /* ===================== VOICE ===================== */
 let jaVoice = null;
+let allVoices = [];
+
 function pickVoice() {
-  const voices = speechSynthesis.getVoices();
-  jaVoice = voices.find(v => v.lang === 'ja-JP') || voices.find(v => v.lang && v.lang.startsWith('ja')) || null;
+  allVoices = speechSynthesis.getVoices();
+  // 保存された声があればそれを優先、なければ日本語の既定
+  jaVoice = (state.voiceURI && allVoices.find(v => v.voiceURI === state.voiceURI))
+    || allVoices.find(v => v.lang === 'ja-JP')
+    || allVoices.find(v => v.lang && v.lang.startsWith('ja'))
+    || null;
+  populateVoiceSelect();
 }
+
+function populateVoiceSelect() {
+  const sel = $('voiceSelect');
+  if (!sel || !allVoices.length) return;
+  // 日本語を上に、その他を下に
+  const ja = allVoices.filter(v => v.lang && v.lang.startsWith('ja'));
+  const others = allVoices.filter(v => !(v.lang && v.lang.startsWith('ja')));
+  const opts = ['<option value="">自動（おまかせ）</option>']
+    .concat(ja.map(v => `<option value="${v.voiceURI}">${escapeHtml(v.name)}</option>`))
+    .concat(others.length ? ['<option disabled>──── その他の言語 ────</option>'] : [])
+    .concat(others.map(v => `<option value="${v.voiceURI}">${escapeHtml(v.name)}（${escapeHtml(v.lang)}）</option>`));
+  sel.innerHTML = opts.join('');
+  sel.value = state.voiceURI || '';
+}
+
 if ('speechSynthesis' in window) {
   pickVoice();
   speechSynthesis.onvoiceschanged = pickVoice;
 }
-function speak(text) {
-  if (!state.useVoice || !('speechSynthesis' in window)) return;
+
+// onend: 読み上げ終了後に呼ばれるコールバック（録音クリップへの連結用）
+function speak(text, onend) {
+  if (!state.useVoice || !('speechSynthesis' in window) || !text) { if (onend) onend(); return; }
   try {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ja-JP';
-    if (jaVoice) u.voice = jaVoice;
+    if (jaVoice) { u.voice = jaVoice; u.lang = jaVoice.lang; }
+    else u.lang = 'ja-JP';
     u.rate = 1.0; u.pitch = 1.05; u.volume = 1;
+    if (onend) u.onend = onend;
     speechSynthesis.speak(u);
-  } catch (e) {}
+  } catch (e) { if (onend) onend(); }
+}
+
+/* ===== 同梱の音声/効果音ファイル（audio/ に置けば自動で使用、無ければ合成音/TTSにフォールバック） =====
+   開発側で用意するファイル（任意・部分的でもOK）:
+     audio/suspense.* … ためる効果音
+     audio/buzzer.*   … アウトのブザー
+     audio/out.*      … 「アウトー！」の声
+     audio/ikki.*     … 「一気！一気！」の声
+     audio/half.*     … 「半分一気！」の声
+     audio/everyone.* … 「全員アウトー！」の声
+   ※拡張子は mp3 / m4a / wav / ogg のどれでも可（最初に読めたものを採用） */
+const CLIP_KEYS = ['suspense', 'buzzer', 'out', 'ikki', 'half', 'everyone'];
+const CLIP_EXTS = ['mp3', 'm4a', 'wav', 'ogg'];
+const clips = {}; // key -> HTMLAudioElement（使用可）/ false（無し）/ undefined（未判定）
+
+function preloadClips() {
+  CLIP_KEYS.forEach(key => {
+    if (key in clips) return;          // 判定済みはスキップ
+    tryLoadClip(key, 0);
+  });
+}
+function tryLoadClip(key, extIdx) {
+  if (extIdx >= CLIP_EXTS.length) { clips[key] = false; return; } // 全滅＝無し
+  const a = new Audio(`audio/${key}.${CLIP_EXTS[extIdx]}`);
+  a.preload = 'auto';
+  a.addEventListener('canplaythrough', () => { if (!(clips[key] instanceof Audio)) clips[key] = a; }, { once: true });
+  a.addEventListener('error', () => { if (!(clips[key] instanceof Audio)) tryLoadClip(key, extIdx + 1); }, { once: true });
+  a.load();
+}
+function hasClip(key) { return clips[key] instanceof Audio; }
+function playClip(key) {
+  if (!hasClip(key)) return false;
+  try { const n = clips[key].cloneNode(); n.volume = 1; n.play(); return true; } catch (e) { return false; }
 }
 
 /* ===== WebAudio SFX (ガキ使 罰ゲーム風) ===== */
@@ -536,6 +635,7 @@ function chime() {
 
 /* suspense: accelerating "ticking" drumroll, ~SECONDS long */
 function suspense(seconds) {
+  if (playClip('suspense')) return; // 同梱ファイルがあればそれを使う
   try {
     const c = ac();
     let t = 0, gap = 0.22;
@@ -560,6 +660,7 @@ function suspense(seconds) {
 
 /* the "OUT" buzzer — harsh descending double-honk */
 function buzzer() {
+  if (playClip('buzzer')) return; // 同梱ファイルがあればそれを使う
   try {
     // big hit
     tone(160, 0, 0.45, 'square', 0.4);
@@ -652,20 +753,23 @@ function hit(pick) {
   // ストック加算対象として、呼ばれた人を記録
   lastPickNames = pick.everyone ? state.members.slice() : pick.names.slice();
 
-  // 指名対象（表示名・読み上げ用の呼びかけ）
-  let displayName, callPhrase, baseSub;
+  // 指名対象（表示名・読み上げ用の呼びかけ・名前だけの読み）
+  let displayName, callPhrase, baseSub, namePart;
   if (pick.everyone) {
     displayName = '🍻 全員 🍻';
     callPhrase = '全員、アウトー！';
     baseSub = '全員アウトー！';
+    namePart = '全員';
   } else if (pick.names.length === 1) {
     displayName = pick.names[0];
-    callPhrase = `${pick.names[0]}さん、アウトー！`;
+    callPhrase = `${pick.names[0]}、アウトー！`;
     baseSub = 'アウトー！';
+    namePart = `${pick.names[0]}`;
   } else {
     displayName = pick.names.join('・');
-    callPhrase = `${pick.names.join('、')}さん、まとめてアウトー！`;
+    callPhrase = `${pick.names.join('、')}、まとめてアウトー！`;
     baseSub = `${pick.names.length}人まとめてアウトー！`;
+    namePart = `${pick.names.join('、')}、まとめて`;
   }
 
   // 罰の重さを上乗せ（低確率で 半分一気 / 一気飲み）
@@ -692,14 +796,35 @@ function hit(pick) {
   sub.textContent = displaySub;
   reveal.classList.remove('pop'); void reveal.offsetWidth; reveal.classList.add('pop');
 
-  // speak "アウトー！" then the name, slightly after the buzzer
-  setTimeout(() => speak(speech), 900);
+  // 声：録音クリップがあれば「名前(TTS)→録音の掛け声」、無ければ全文をTTS
+  const voiceKey =
+    (pick.everyone && hasClip('everyone')) ? 'everyone' :
+    (penalty.key === 'ikki' && hasClip('ikki')) ? 'ikki' :
+    (penalty.key === 'half' && hasClip('half')) ? 'half' :
+    (hasClip('out') ? 'out' : null);
+  setTimeout(() => {
+    if (voiceKey) {
+      // 名前を読み上げてから、録音した掛け声を再生
+      speak(namePart, () => playClip(voiceKey));
+    } else {
+      speak(speech); // 同梱クリップ無し＝従来どおり全文TTS
+    }
+  }, 900);
 
   history.unshift({ t: fmtTime(Date.now() - startTime), label: displayName });
   renderHistory();
 
-  // 演出が終わってから休憩（1分）に入る
-  setTimeout(() => { if (playEl.classList.contains('show')) startInterval(); }, 2600);
+  // 演出が終わってから：完全ストックモードなら自動加算して即次へ、通常は飲む・注ぐタイム
+  setTimeout(() => {
+    if (!playEl.classList.contains('show')) return;
+    if (state.fullStock) {
+      lastPickNames.forEach(n => { stocks[n] = (stocks[n] || 0) + 1; });
+      renderStocks();
+      resumeGame();
+    } else {
+      startInterval();
+    }
+  }, 2600);
 }
 
 function renderHistory() {
@@ -822,6 +947,7 @@ function startGame() {
   if (state.members.length < 2) return;
   // unlock audio + voice on user gesture
   chime();
+  preloadClips();
   if ('speechSynthesis' in window) { speak(' '); }
   callCount = 0; history.length = 0;
   for (const k in stocks) delete stocks[k];   // ストックをリセット
@@ -870,6 +996,7 @@ $('nowBtn').onclick = () => { clearTimeout(timer); clearTimeout(suspenseTimer); 
 load();
 syncSettingsUI();
 afterMembersChange();
+preloadClips();  // 同梱の音声/効果音があれば事前読み込み
 </script>
 </body>
 </html>

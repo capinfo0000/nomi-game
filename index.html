@@ -239,6 +239,11 @@
     75% { transform: translateX(-5px); } 90% { transform: translateX(3px); }
   }
   #play.alert { background: radial-gradient(900px 700px at 50% 30%, #5a0d1c 0%, #1a0410 70%); }
+  .btn-call {
+    width: 100%; font-size: 19px; padding: 16px; margin-bottom: 12px;
+    background: linear-gradient(90deg, var(--cyan), #3d7bff); color: #04122a;
+    box-shadow: 0 6px 22px rgba(61,240,255,0.28);
+  }
   .play-controls { display: flex; gap: 12px; }
   .play-controls .btn { flex: 1; padding: 16px; }
   .btn-stop { background: rgba(255,85,96,0.18); border: 1px solid var(--danger); color: var(--danger); }
@@ -305,15 +310,8 @@
       <div class="slider-wrap">
         <label>1回に呼ぶ最大人数（人）</label>
         <input type="number" id="maxPeopleInput" min="1" value="1" inputmode="numeric" />
-        <div class="sub">1人〜この人数の間でランダムに呼びます</div>
+        <div class="sub">1人〜この人数の間でランダムに呼びます（全員になることも）</div>
       </div>
-    </div>
-    <div class="row">
-      <label>「全員で飲め！」を時々入れる</label>
-      <span class="toggle">
-        <input type="checkbox" id="allowEveryone" checked />
-        <span class="track"></span><span class="thumb"></span>
-      </span>
     </div>
     <div class="row">
       <div class="slider-wrap">
@@ -324,23 +322,6 @@
         <input type="checkbox" id="fullStock" />
         <span class="track"></span><span class="thumb"></span>
       </span>
-    </div>
-    <div class="row">
-      <label>音声で読み上げる 🔊</label>
-      <span class="toggle">
-        <input type="checkbox" id="useVoice" checked />
-        <span class="track"></span><span class="thumb"></span>
-      </span>
-    </div>
-    <div class="row">
-      <div class="slider-wrap">
-        <label>読み上げの声</label>
-        <div class="voice-row">
-          <select id="voiceSelect"></select>
-          <button class="btn btn-ghost" id="voicePreview" type="button">試聴 ▶</button>
-        </div>
-        <div class="sub">使える声は端末・ブラウザによって異なります</div>
-      </div>
     </div>
   </div>
 
@@ -382,6 +363,8 @@
       <button class="btn btn-accent" id="resumeBtn">🍺 飲んだ<br><small>（再開）</small></button>
     </div>
   </div>
+
+  <button class="btn btn-call" id="callBtn" type="button">📣 コール！</button>
 
   <div class="play-controls">
     <button class="btn btn-accent" id="nowBtn">今すぐ呼ぶ ⚡</button>
@@ -430,7 +413,7 @@ const memberList = $('memberList');
 const emptyMsg = $('emptyMsg');
 const startBtn = $('startBtn');
 const maxPeopleInput = $('maxPeopleInput');
-const allowEveryone = $('allowEveryone'), useVoice = $('useVoice'), fullStock = $('fullStock');
+const fullStock = $('fullStock');
 
 /* ===================== MEMBERS UI ===================== */
 function renderMembers() {
@@ -489,11 +472,9 @@ nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addMember(
 /* ===================== SETTINGS UI ===================== */
 function syncSettingsUI() {
   maxPeopleInput.value = state.maxPeople;
-  allowEveryone.checked = state.allowEveryone;
-  useVoice.checked = state.useVoice;
   fullStock.checked = state.fullStock;
   syncLevelUI();
-  if ('speechSynthesis' in window) pickVoice(); // 保存された声を反映
+  if ('speechSynthesis' in window) pickVoice(); // 音声を準備（自動選択）
 }
 
 function syncLevelUI() {
@@ -517,17 +498,7 @@ function applyMaxPeople() {
   save();
 }
 maxPeopleInput.onchange = applyMaxPeople;
-allowEveryone.onchange = () => { state.allowEveryone = allowEveryone.checked; save(); };
-useVoice.onchange = () => { state.useVoice = useVoice.checked; save(); };
 fullStock.onchange = () => { state.fullStock = fullStock.checked; save(); };
-$('voiceSelect').onchange = (e) => { state.voiceURI = e.target.value; pickVoice(); save(); };
-$('voicePreview').onclick = () => {
-  // 試聴は本番フラグに関わらず鳴らす
-  const wasOff = !state.useVoice;
-  if (wasOff) state.useVoice = true;
-  speak('テスト。よねくら、アウトー！');
-  if (wasOff) state.useVoice = false;
-};
 
 /* ===================== VOICE ===================== */
 let jaVoice = null;
@@ -535,26 +506,10 @@ let allVoices = [];
 
 function pickVoice() {
   allVoices = speechSynthesis.getVoices();
-  // 保存された声があればそれを優先、なければ日本語の既定
-  jaVoice = (state.voiceURI && allVoices.find(v => v.voiceURI === state.voiceURI))
-    || allVoices.find(v => v.lang === 'ja-JP')
+  // 日本語の既定音声を自動選択
+  jaVoice = allVoices.find(v => v.lang === 'ja-JP')
     || allVoices.find(v => v.lang && v.lang.startsWith('ja'))
     || null;
-  populateVoiceSelect();
-}
-
-function populateVoiceSelect() {
-  const sel = $('voiceSelect');
-  if (!sel || !allVoices.length) return;
-  // 日本語を上に、その他を下に
-  const ja = allVoices.filter(v => v.lang && v.lang.startsWith('ja'));
-  const others = allVoices.filter(v => !(v.lang && v.lang.startsWith('ja')));
-  const opts = ['<option value="">自動（おまかせ）</option>']
-    .concat(ja.map(v => `<option value="${v.voiceURI}">${escapeHtml(v.name)}</option>`))
-    .concat(others.length ? ['<option disabled>──── その他の言語 ────</option>'] : [])
-    .concat(others.map(v => `<option value="${v.voiceURI}">${escapeHtml(v.name)}（${escapeHtml(v.lang)}）</option>`));
-  sel.innerHTML = opts.join('');
-  sel.value = state.voiceURI || '';
 }
 
 if ('speechSynthesis' in window) {
@@ -584,16 +539,35 @@ function speak(text, onend) {
      audio/ikki.*     … 「一気！一気！」の声
      audio/half.*     … 「半分一気！」の声
      audio/everyone.* … 「全員アウトー！」の声
+     audio/call1.* 〜 call12.* … コール（ボタンで押すとランダム再生。何種類でもOK）
    ※拡張子は mp3 / m4a / wav / ogg のどれでも可（最初に読めたものを採用） */
 const CLIP_KEYS = ['suspense', 'buzzer', 'out', 'ikki', 'half', 'everyone'];
+const CALL_KEYS = Array.from({ length: 12 }, (_, i) => `call${i + 1}`); // コール用（任意）
 const CLIP_EXTS = ['mp3', 'm4a', 'wav', 'ogg'];
 const clips = {}; // key -> HTMLAudioElement（使用可）/ false（無し）/ undefined（未判定）
 
+// 内蔵テキストコール（コール音源が無いときのフォールバック・TTSで読み上げ）
+const TEXT_CALLS = [
+  '飲んで！飲んで！飲んで！飲んで！',
+  'イッキ！イッキ！イッキ！イッキ！',
+  'コールだ！グイグイ いけー！',
+  'のま のま いえーい！',
+  'はい！そこ、飲んじゃう？',
+  'ぐいっと いっぱい いってみよう！',
+];
+
 function preloadClips() {
-  CLIP_KEYS.forEach(key => {
+  CLIP_KEYS.concat(CALL_KEYS).forEach(key => {
     if (key in clips) return;          // 判定済みはスキップ
     tryLoadClip(key, 0);
   });
+}
+
+/* コール：登録済みコールからランダム再生（音源優先・無ければ内蔵テキストをTTS） */
+function playCall() {
+  const avail = CALL_KEYS.filter(hasClip);
+  if (avail.length) { playClip(avail[randInt(0, avail.length - 1)]); return; }
+  speak(TEXT_CALLS[randInt(0, TEXT_CALLS.length - 1)]);
 }
 function tryLoadClip(key, extIdx) {
   if (extIdx >= CLIP_EXTS.length) { clips[key] = false; return; } // 全滅＝無し
@@ -680,22 +654,21 @@ function rand(min, max) { return Math.random() * (max - min) + min; }
 function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = randInt(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
+// 呼ぶ人を決める（人数はランダム）。全員になることもある。名前の配列を返す
 function decidePeople() {
   const total = state.members.length;
-  const everyoneChance = (LEVELS[state.level] || LEVELS.normal).everyone;
-  // EVERYONE イベント（有効かつ2人以上のとき、レベル依存の確率）
-  if (state.allowEveryone && total >= 2 && Math.random() < everyoneChance) {
-    return { everyone: true, names: state.members.slice() };
+  const L = LEVELS[state.level] || LEVELS.normal;
+  // 全員イベント（2人以上のとき、レベル依存の確率）
+  if (total >= 2 && Math.random() < L.everyone) {
+    return state.members.slice();
   }
   const cap = Math.min(state.maxPeople, total);
-  const soloChance = (LEVELS[state.level] || LEVELS.normal).solo;
-  // 1人指名の確率はレベル依存（酒豪ほど複数人が出やすい）
   let count = 1;
   if (cap > 1) {
-    if (Math.random() < soloChance) count = 1;
+    if (Math.random() < L.solo) count = 1;     // 酒豪ほど複数人が出やすい
     else count = randInt(2, cap);
   }
-  return { everyone: false, names: shuffle(state.members).slice(0, count) };
+  return shuffle(state.members).slice(0, count);
 }
 
 const SUSPENSE_SEC = 2.2;
@@ -711,7 +684,7 @@ function decidePenalty() {
 }
 
 function announce() {
-  const pick = decidePeople();
+  const names = decidePeople();
 
   const reveal = $('revealName'), sub = $('revealSub'), status = $('statusLine'),
         dots = $('nextDots'), glass = $('glassIcon'), stamp = $('outStamp');
@@ -729,10 +702,10 @@ function announce() {
   suspense(SUSPENSE_SEC);
 
   clearTimeout(suspenseTimer);
-  suspenseTimer = setTimeout(() => hit(pick), SUSPENSE_SEC * 1000);
+  suspenseTimer = setTimeout(() => hit(names), SUSPENSE_SEC * 1000);
 }
 
-function hit(pick) {
+function hit(names) {
   callCount++;
   $('countPill').textContent = '登場回数 ' + callCount;
 
@@ -751,25 +724,24 @@ function hit(pick) {
   glass.style.display = 'none';
 
   // ストック加算対象として、呼ばれた人を記録
-  lastPickNames = pick.everyone ? state.members.slice() : pick.names.slice();
+  lastPickNames = names.slice();
+
+  // 全員かどうか（ランダムで全員が選ばれた場合）
+  const isEveryone = names.length >= 2 && names.length === state.members.length;
 
   // 指名対象（表示名・読み上げ用の呼びかけ・名前だけの読み）
   let displayName, callPhrase, baseSub, namePart;
-  if (pick.everyone) {
+  if (isEveryone) {
     displayName = '🍻 全員 🍻';
     callPhrase = '全員、アウトー！';
     baseSub = '全員アウトー！';
     namePart = '全員';
-  } else if (pick.names.length === 1) {
-    displayName = pick.names[0];
-    callPhrase = `${pick.names[0]}、アウトー！`;
-    baseSub = 'アウトー！';
-    namePart = `${pick.names[0]}`;
   } else {
-    displayName = pick.names.join('・');
-    callPhrase = `${pick.names.join('、')}、まとめてアウトー！`;
-    baseSub = `${pick.names.length}人まとめてアウトー！`;
-    namePart = `${pick.names.join('、')}、まとめて`;
+    // 1人でも複数人でも「名前を読んでからアウト」で統一
+    displayName = names.join('・');
+    callPhrase = `${names.join('、')}、アウトー！`;
+    baseSub = names.length === 1 ? 'アウトー！' : `${names.length}人アウトー！`;
+    namePart = names.join('、');
   }
 
   // 罰の重さを上乗せ（低確率で 半分一気 / 一気飲み）
@@ -798,7 +770,7 @@ function hit(pick) {
 
   // 声：録音クリップがあれば「名前(TTS)→録音の掛け声」、無ければ全文をTTS
   const voiceKey =
-    (pick.everyone && hasClip('everyone')) ? 'everyone' :
+    (isEveryone && hasClip('everyone')) ? 'everyone' :
     (penalty.key === 'ikki' && hasClip('ikki')) ? 'ikki' :
     (penalty.key === 'half' && hasClip('half')) ? 'half' :
     (hasClip('out') ? 'out' : null);
@@ -990,6 +962,7 @@ $('startBtn').onclick = startGame;
 $('stopBtn').onclick = stopGame;
 $('stockBtn').onclick = stockOut;
 $('resumeBtn').onclick = resumeGame;
+$('callBtn').onclick = playCall;
 $('nowBtn').onclick = () => { clearTimeout(timer); clearTimeout(suspenseTimer); clearIntervalState(); announce(); };
 
 /* ===================== INIT ===================== */

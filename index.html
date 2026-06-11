@@ -79,7 +79,7 @@
 
   /* member input */
   .add-row { display: flex; gap: 8px; }
-  input[type="text"] {
+  input[type="text"], input[type="number"] {
     flex: 1;
     background: var(--bg2);
     border: 1px solid rgba(255,255,255,0.12);
@@ -89,7 +89,8 @@
     padding: 12px 14px;
     outline: none;
   }
-  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]:focus, input[type="number"]:focus { border-color: var(--accent); }
+  #maxPeopleInput { width: 100px; margin-top: 8px; flex: none; }
   .btn {
     border: none;
     border-radius: 12px;
@@ -288,22 +289,10 @@
         <div class="sub" id="levelDesc"></div>
       </div>
     </div>
-      <div class="slider-wrap">
-        <label>呼び出し間隔の最短：<span class="val" id="minVal">1</span> 分</label>
-        <input type="range" id="minRange" min="0" max="9" step="1" value="1" />
-      </div>
-    </div>
     <div class="row">
       <div class="slider-wrap">
-        <label>呼び出し間隔の最長：<span class="val" id="maxVal">10</span> 分</label>
-        <input type="range" id="maxRange" min="1" max="10" step="1" value="10" />
-        <div class="sub">この範囲のランダムな時間ごとに発動します</div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="slider-wrap">
-        <label>1回に呼ぶ最大人数：<span class="val" id="maxPeopleVal">1</span> 人</label>
-        <input type="range" id="maxPeopleRange" min="1" max="1" step="1" value="1" />
+        <label>1回に呼ぶ最大人数（人）</label>
+        <input type="number" id="maxPeopleInput" min="1" value="1" inputmode="numeric" />
         <div class="sub">1人〜この人数の間でランダムに呼びます</div>
       </div>
     </div>
@@ -373,8 +362,6 @@
 const LS_KEY = 'nomiGame.v1';
 const state = {
   members: [],
-  minMin: 1,
-  maxMin: 10,
   maxPeople: 1,
   allowEveryone: true,
   useVoice: true,
@@ -408,8 +395,7 @@ const nameInput = $('nameInput');
 const memberList = $('memberList');
 const emptyMsg = $('emptyMsg');
 const startBtn = $('startBtn');
-const minRange = $('minRange'), maxRange = $('maxRange'), maxPeopleRange = $('maxPeopleRange');
-const minVal = $('minVal'), maxVal = $('maxVal'), maxPeopleVal = $('maxPeopleVal');
+const maxPeopleInput = $('maxPeopleInput');
 const allowEveryone = $('allowEveryone'), useVoice = $('useVoice');
 
 /* ===================== MEMBERS UI ===================== */
@@ -442,10 +428,9 @@ function renderMembers() {
 function afterMembersChange() {
   // clamp maxPeople to member count
   const n = Math.max(1, state.members.length);
-  maxPeopleRange.max = n;
+  maxPeopleInput.max = n;
   if (state.maxPeople > n) state.maxPeople = n;
-  maxPeopleRange.value = state.maxPeople;
-  maxPeopleVal.textContent = state.maxPeople;
+  maxPeopleInput.value = state.maxPeople;
   startBtn.disabled = state.members.length < 2;
   renderMembers();
   save();
@@ -469,9 +454,7 @@ nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addMember(
 
 /* ===================== SETTINGS UI ===================== */
 function syncSettingsUI() {
-  minRange.value = state.minMin; minVal.textContent = state.minMin;
-  maxRange.value = state.maxMin; maxVal.textContent = state.maxMin;
-  maxPeopleVal.textContent = state.maxPeople;
+  maxPeopleInput.value = state.maxPeople;
   allowEveryone.checked = state.allowEveryone;
   useVoice.checked = state.useVoice;
   syncLevelUI();
@@ -488,17 +471,16 @@ document.querySelectorAll('#levelSeg .seg-btn').forEach(b => {
   b.onclick = () => { state.level = b.dataset.level; syncLevelUI(); save(); };
 });
 
-minRange.oninput = () => {
-  state.minMin = +minRange.value;
-  if (state.minMin >= state.maxMin) { state.maxMin = state.minMin + 1; maxRange.value = state.maxMin; maxVal.textContent = state.maxMin; }
-  minVal.textContent = state.minMin; save();
-};
-maxRange.oninput = () => {
-  state.maxMin = +maxRange.value;
-  if (state.maxMin <= state.minMin) { state.minMin = state.maxMin - 1; minRange.value = state.minMin; minVal.textContent = state.minMin; }
-  maxVal.textContent = state.maxMin; save();
-};
-maxPeopleRange.oninput = () => { state.maxPeople = +maxPeopleRange.value; maxPeopleVal.textContent = state.maxPeople; save(); };
+function applyMaxPeople() {
+  const n = Math.max(1, state.members.length);
+  let v = parseInt(maxPeopleInput.value, 10);
+  if (isNaN(v) || v < 1) v = 1;
+  if (v > n) v = n;            // メンバー数を超えない
+  state.maxPeople = v;
+  maxPeopleInput.value = v;
+  save();
+}
+maxPeopleInput.onchange = applyMaxPeople;
 allowEveryone.onchange = () => { state.allowEveryone = allowEveryone.checked; save(); };
 useVoice.onchange = () => { state.useVoice = useVoice.checked; save(); };
 
@@ -740,10 +722,10 @@ function resetToWaiting() {
 
 function scheduleNext() {
   clearTimeout(timer);
-  const cap = (LEVELS[state.level] || LEVELS.normal).maxCap || state.maxMin;
-  const effMaxMin = Math.min(state.maxMin, cap);            // レベル上限でキャップ
-  const effMinMin = Math.min(state.minMin, effMaxMin);      // 最短が上限を超えないよう調整
-  const delay = rand(effMinMin * 60 * 1000, effMaxMin * 60 * 1000);
+  const capMin = (LEVELS[state.level] || LEVELS.normal).maxCap || 10; // 最長(分・レベル依存)
+  const minMs = 1000;               // 最短1秒固定
+  const maxMs = capMin * 60 * 1000; // 最長
+  const delay = rand(minMs, maxMs);
   timer = setTimeout(announce, delay);
 }
 

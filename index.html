@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0b1a" />
+<title>飲みゲールーレット 🍻</title>
+
+<!-- スマホ「ホーム画面に追加」でアプリのように全画面起動 -->
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="飲みゲー" />
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><rect width='180' height='180' rx='40' fill='%231b1b3a'/><text x='90' y='130' font-size='112' text-anchor='middle'>🍻</text></svg>" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' rx='14' fill='%231b1b3a'/><text x='32' y='47' font-size='40' text-anchor='middle'>🍻</text></svg>" />
+<link rel="manifest" href='data:application/manifest+json,{"name":"飲みゲールーレット","short_name":"飲みゲー","display":"standalone","background_color":"%230b0b1a","theme_color":"%230b0b1a","start_url":"."}' />
+<style>
+  :root {
+    --bg: #0b0b1a;
+    --bg2: #141430;
+    --card: #1b1b3a;
+    --card2: #23234d;
+    --accent: #ff3d7f;
+    --accent2: #ffd23d;
+    --cyan: #3df0ff;
+    --text: #f3f3ff;
+    --muted: #9a9ac8;
+    --danger: #ff5560;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Segoe UI", sans-serif;
+    background: radial-gradient(1200px 800px at 50% -10%, #2a1840 0%, var(--bg) 60%);
+    color: var(--text);
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    max-width: 540px;
+    margin: 0 auto;
+    padding: env(safe-area-inset-top) 18px calc(env(safe-area-inset-bottom) + 24px);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    text-align: center;
+    padding: 22px 0 10px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 28px;
+    letter-spacing: 0.04em;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .card h2 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    color: var(--cyan);
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* member input */
+  .add-row { display: flex; gap: 8px; }
+  input[type="text"] {
+    flex: 1;
+    background: var(--bg2);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 16px;
+    padding: 12px 14px;
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  .btn {
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 12px 16px;
+    cursor: pointer;
+    color: #fff;
+    background: var(--card2);
+    transition: transform .08s ease, opacity .2s;
+    user-select: none;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-accent { background: linear-gradient(90deg, var(--accent), #ff6b3d); }
+  .btn-add { background: linear-gradient(90deg, var(--cyan), #3d7bff); color:#04122a; }
+  .btn-ghost { background: transparent; border: 1px solid rgba(255,255,255,0.18); color: var(--muted); }
+
+  .members { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .members li {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card2);
+    border-radius: 999px;
+    padding: 8px 8px 8px 14px;
+    font-size: 15px;
+  }
+  .members li .x {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    display: grid; place-items: center;
+    font-size: 13px; cursor: pointer; color: var(--muted);
+  }
+  .members li .x:active { background: var(--danger); color:#fff; }
+  .empty { color: var(--muted); font-size: 14px; margin-top: 12px; }
+
+  /* settings */
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .row:last-child { margin-bottom: 0; }
+  .row label { font-size: 14px; color: var(--text); }
+  .row .val { color: var(--accent2); font-weight: 700; font-variant-numeric: tabular-nums; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .slider-wrap { flex: 1; }
+  .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+  .seg { display: flex; gap: 6px; margin-top: 8px; }
+  .seg-btn {
+    flex: 1; border: 1px solid rgba(255,255,255,0.14); background: var(--bg2);
+    color: var(--muted); font-size: 14px; font-weight: 700; padding: 11px 6px;
+    border-radius: 12px; cursor: pointer; transition: all .15s; user-select: none;
+  }
+  .seg-btn:active { transform: scale(0.96); }
+  .seg-btn.active { background: linear-gradient(90deg, var(--accent), var(--accent2)); color:#1a0a14; border-color: transparent; }
+
+  .toggle { position: relative; width: 50px; height: 28px; flex: none; }
+  .toggle input { opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .toggle .track {
+    position: absolute; inset: 0; border-radius: 999px;
+    background: var(--card2); transition: background .2s; pointer-events: none;
+  }
+  .toggle .thumb {
+    position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
+    border-radius: 50%; background: #fff; transition: transform .2s; pointer-events: none;
+  }
+  .toggle input:checked ~ .track { background: var(--accent); }
+  .toggle input:checked ~ .thumb { transform: translateX(22px); }
+
+  .start-wrap { margin-top: auto; padding-top: 8px; }
+  .btn-start {
+    width: 100%; font-size: 20px; padding: 18px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #1a0a14;
+    box-shadow: 0 8px 30px rgba(255,61,127,0.35);
+  }
+  .btn-start:disabled { opacity: 0.4; box-shadow: none; cursor: not-allowed; }
+
+  /* ===== PLAY SCREEN ===== */
+  #play {
+    position: fixed; inset: 0; z-index: 50;
+    background: radial-gradient(900px 700px at 50% 20%, #34123a 0%, var(--bg) 70%);
+    display: none; flex-direction: column;
+    padding: env(safe-area-inset-top) 18px calc(env(safe-area-inset-bottom) + 20px);
+  }
+  #play.show { display: flex; }
+  .play-top { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; }
+  .pill { background: rgba(255,255,255,0.08); border-radius: 999px; padding: 6px 14px; font-size: 13px; color: var(--muted); }
+  .stage {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; gap: 18px;
+  }
+  .status-line { color: var(--muted); font-size: 15px; letter-spacing: 0.06em; }
+  .next-dots { font-size: 14px; color: var(--cyan); min-height: 20px; letter-spacing: .2em; }
+  .reveal {
+    font-size: clamp(34px, 11vw, 64px); font-weight: 800; line-height: 1.2;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    word-break: break-word;
+  }
+  .reveal-sub { font-size: 22px; font-weight: 700; color: var(--text); }
+  .pop { animation: pop .5s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes pop { 0% { transform: scale(0.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  .pulse { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
+  .glass { font-size: 64px; }
+
+  /* suspense build-up */
+  .tense { animation: tense .35s ease-in-out infinite; color: var(--accent2) !important; }
+  @keyframes tense { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+  /* red flash overlay */
+  #flash {
+    position: fixed; inset: 0; z-index: 60; background: #ff1f3d;
+    opacity: 0; pointer-events: none;
+  }
+  #flash.hit { animation: flash .5s ease-out; }
+  @keyframes flash { 0% { opacity: .9; } 100% { opacity: 0; } }
+
+  /* AUTO / アウト stamp */
+  .out-stamp {
+    display: none;
+    font-size: clamp(56px, 20vw, 130px);
+    font-weight: 900; letter-spacing: 0.05em;
+    color: #fff;
+    -webkit-text-stroke: 3px #ff1f3d;
+    text-shadow: 0 0 28px rgba(255,31,61,0.9);
+    transform: rotate(-8deg);
+    line-height: 1;
+  }
+  .out-stamp.show { display: block; animation: stamp .45s cubic-bezier(.2,1.5,.4,1); }
+  @keyframes stamp {
+    0% { transform: rotate(-8deg) scale(2.4); opacity: 0; }
+    60% { transform: rotate(-8deg) scale(0.92); opacity: 1; }
+    100% { transform: rotate(-8deg) scale(1); opacity: 1; }
+  }
+  #play.shake { animation: shake .5s; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    15% { transform: translateX(-12px); } 30% { transform: translateX(11px); }
+    45% { transform: translateX(-9px); } 60% { transform: translateX(8px); }
+    75% { transform: translateX(-5px); } 90% { transform: translateX(3px); }
+  }
+  #play.alert { background: radial-gradient(900px 700px at 50% 30%, #5a0d1c 0%, #1a0410 70%); }
+  .play-controls { display: flex; gap: 12px; }
+  .play-controls .btn { flex: 1; padding: 16px; }
+  .btn-stop { background: rgba(255,85,96,0.18); border: 1px solid var(--danger); color: var(--danger); }
+
+  .interval {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 16px; padding: 14px; margin-bottom: 12px; text-align: center;
+  }
+  .interval-count { font-size: 15px; color: var(--cyan); margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+  .interval-btns { display: flex; gap: 10px; }
+  .interval-btns .btn { flex: 1; padding: 12px; line-height: 1.3; }
+  .interval-btns .btn small { font-weight: 600; opacity: 0.8; font-size: 11px; }
+
+  .stock-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .stock-title { width: 100%; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+  .stock-pill { background: rgba(61,123,255,0.18); border: 1px solid rgba(61,240,255,0.35);
+    border-radius: 999px; padding: 5px 12px; font-size: 13px; }
+  .stock-pill b { color: var(--cyan); font-size: 15px; }
+
+  .history { margin-top: 10px; max-height: 92px; overflow-y: auto; }
+  .history-item { font-size: 13px; color: var(--muted); padding: 3px 0; }
+  .history-item b { color: var(--accent2); }
+
+  .hint { text-align: center; color: var(--muted); font-size: 12px; margin-top: 14px; line-height: 1.6; }
+  a { color: var(--cyan); }
+</style>
+</head>
+<body>
+<div class="app" id="setup">
+  <header>
+    <h1>🍻 飲みゲールーレット</h1>
+    <p>ランダムな時間に、ランダムな人を呼び上げる。呼ばれたら…飲め！</p>
+  </header>
+
+  <div class="card">
+    <h2>👥 メンバー登録</h2>
+    <div class="add-row">
+      <input type="text" id="nameInput" placeholder="名前を入力" autocomplete="off" maxlength="20" />
+      <button class="btn btn-add" id="addBtn">追加</button>
+    </div>
+    <ul class="members" id="memberList"></ul>
+    <p class="empty" id="emptyMsg">まだ誰もいません。名前を追加してね。</p>
+  </div>
+
+  <div class="card">
+    <h2>⚙️ 設定</h2>
+    <div class="row">
+      <div class="slider-wrap">
+        <label>レベル（お酒の強さ）</label>
+        <div class="seg" id="levelSeg">
+          <button class="seg-btn" data-level="light">🍵 小酒</button>
+          <button class="seg-btn" data-level="normal">🍺 普通</button>
+          <button class="seg-btn" data-level="heavy">🔥 酒豪</button>
+        </div>
+        <div class="sub" id="levelDesc"></div>
+      </div>
+    </div>
+      <div class="slider-wrap">
+        <label>呼び出し間隔の最短：<span class="val" id="minVal">1</span> 分</label>
+        <input type="range" id="minRange" min="0" max="9" step="1" value="1" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="slider-wrap">
+        <label>呼び出し間隔の最長：<span class="val" id="maxVal">10</span> 分</label>
+        <input type="range" id="maxRange" min="1" max="10" step="1" value="10" />
+        <div class="sub">この範囲のランダムな時間ごとに発動します</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="slider-wrap">
+        <label>1回に呼ぶ最大人数：<span class="val" id="maxPeopleVal">1</span> 人</label>
+        <input type="range" id="maxPeopleRange" min="1" max="1" step="1" value="1" />
+        <div class="sub">1人〜この人数の間でランダムに呼びます</div>
+      </div>
+    </div>
+    <div class="row">
+      <label>「全員で飲め！」を時々入れる</label>
+      <span class="toggle">
+        <input type="checkbox" id="allowEveryone" checked />
+        <span class="track"></span><span class="thumb"></span>
+      </span>
+    </div>
+    <div class="row">
+      <label>音声で読み上げる 🔊</label>
+      <span class="toggle">
+        <input type="checkbox" id="useVoice" checked />
+        <span class="track"></span><span class="thumb"></span>
+      </span>
+    </div>
+  </div>
+
+  <div class="start-wrap">
+    <button class="btn btn-start" id="startBtn" disabled>スタート 🎲</button>
+    <p class="hint">
+      スマホをテーブルに置いて遊んでね。再生中は画面が消えないようにします。<br />
+      飲みすぎ注意・20歳未満は飲酒できません 🚫
+    </p>
+  </div>
+</div>
+
+<div id="flash"></div>
+
+<!-- PLAY SCREEN -->
+<div id="play">
+  <div class="play-top">
+    <span class="pill" id="elapsedPill">経過 0:00</span>
+    <span class="pill" id="countPill">登場回数 0</span>
+  </div>
+
+  <div class="stage">
+    <div class="status-line pulse" id="statusLine">次は誰だ…？</div>
+    <div class="next-dots" id="nextDots"></div>
+    <div class="glass" id="glassIcon">🍺</div>
+    <div class="out-stamp" id="outStamp">アウトー！</div>
+    <div class="reveal" id="revealName" style="display:none"></div>
+    <div class="reveal-sub" id="revealSub" style="display:none"></div>
+  </div>
+
+  <div class="history" id="history"></div>
+
+  <div id="stockList" class="stock-list"></div>
+
+  <div class="interval" id="intervalPanel" style="display:none">
+    <div class="interval-count" id="intervalCount"></div>
+    <div class="interval-btns">
+      <button class="btn btn-add" id="stockBtn">📥 ストック<br><small>（後で飲む）</small></button>
+      <button class="btn btn-accent" id="resumeBtn">🍺 飲んだ<br><small>（再開）</small></button>
+    </div>
+  </div>
+
+  <div class="play-controls">
+    <button class="btn btn-accent" id="nowBtn">今すぐ呼ぶ ⚡</button>
+    <button class="btn btn-stop" id="stopBtn">やめる ■</button>
+  </div>
+</div>
+
+<script>
+/* ===================== STATE ===================== */
+const LS_KEY = 'nomiGame.v1';
+const state = {
+  members: [],
+  minMin: 1,
+  maxMin: 10,
+  maxPeople: 1,
+  allowEveryone: true,
+  useVoice: true,
+  level: 'normal', // light / normal / heavy
+};
+
+/* レベルごとの確率設定 */
+// solo = 1人だけ指名になる確率（低いほど複数人が出やすい）/ maxCap = 呼び出し間隔の上限(分)
+const LEVELS = {
+  light:  { ikki: 0.02, half: 0.08, everyone: 0.05, solo: 0.75, maxCap: 10, desc: '🍵 小酒：一気はほぼ無し。ほぼ1人ずつ。やさしく楽しむモード。' },
+  normal: { ikki: 0.07, half: 0.20, everyone: 0.12, solo: 0.55, maxCap: 10, desc: '🍺 普通：たまに一気・半分一気が出るバランス型。' },
+  heavy:  { ikki: 0.20, half: 0.45, everyone: 0.22, solo: 0.25, maxCap: 5,  desc: '🔥 酒豪：一気・全員アウト・複数人指名が頻発。呼び出しは最大5分間隔。覚悟する人向け。' },
+};
+
+function load() {
+  // メンバーは保存しない（毎回リセット）。設定のみ復元する。
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_KEY));
+    if (s) Object.assign(state, s);
+  } catch (e) {}
+  state.members = [];
+}
+function save() {
+  const { members, ...settings } = state; // メンバーは保存対象外
+  localStorage.setItem(LS_KEY, JSON.stringify(settings));
+}
+
+/* ===================== ELEMENTS ===================== */
+const $ = (id) => document.getElementById(id);
+const nameInput = $('nameInput');
+const memberList = $('memberList');
+const emptyMsg = $('emptyMsg');
+const startBtn = $('startBtn');
+const minRange = $('minRange'), maxRange = $('maxRange'), maxPeopleRange = $('maxPeopleRange');
+const minVal = $('minVal'), maxVal = $('maxVal'), maxPeopleVal = $('maxPeopleVal');
+const allowEveryone = $('allowEveryone'), useVoice = $('useVoice');
+
+/* ===================== MEMBERS UI ===================== */
+function renderMembers() {
+  memberList.innerHTML = '';
+  state.members.forEach((name, i) => {
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    span.textContent = name;
+    const x = document.createElement('span');
+    x.className = 'x';
+    x.textContent = '✕';
+    x.onclick = () => { state.members.splice(i, 1); afterMembersChange(); };
+    li.appendChild(span);
+    li.appendChild(x);
+    memberList.appendChild(li);
+  });
+  const n = state.members.length;
+  if (n === 0) {
+    emptyMsg.textContent = 'まだ誰もいません。名前を追加してね（2人以上で開始できます）。';
+    emptyMsg.style.display = 'block';
+  } else if (n === 1) {
+    emptyMsg.textContent = 'あと1人以上追加してね（2人以上で開始できます）。';
+    emptyMsg.style.display = 'block';
+  } else {
+    emptyMsg.style.display = 'none';
+  }
+}
+
+function afterMembersChange() {
+  // clamp maxPeople to member count
+  const n = Math.max(1, state.members.length);
+  maxPeopleRange.max = n;
+  if (state.maxPeople > n) state.maxPeople = n;
+  maxPeopleRange.value = state.maxPeople;
+  maxPeopleVal.textContent = state.maxPeople;
+  startBtn.disabled = state.members.length < 2;
+  renderMembers();
+  save();
+}
+
+function addMember() {
+  const name = nameInput.value.trim();
+  if (!name) return;
+  if (state.members.includes(name)) {
+    nameInput.value = '';
+    return;
+  }
+  state.members.push(name);
+  nameInput.value = '';
+  nameInput.focus();
+  afterMembersChange();
+}
+
+$('addBtn').onclick = addMember;
+nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addMember(); });
+
+/* ===================== SETTINGS UI ===================== */
+function syncSettingsUI() {
+  minRange.value = state.minMin; minVal.textContent = state.minMin;
+  maxRange.value = state.maxMin; maxVal.textContent = state.maxMin;
+  maxPeopleVal.textContent = state.maxPeople;
+  allowEveryone.checked = state.allowEveryone;
+  useVoice.checked = state.useVoice;
+  syncLevelUI();
+}
+
+function syncLevelUI() {
+  document.querySelectorAll('#levelSeg .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.level === state.level);
+  });
+  $('levelDesc').textContent = (LEVELS[state.level] || LEVELS.normal).desc;
+}
+
+document.querySelectorAll('#levelSeg .seg-btn').forEach(b => {
+  b.onclick = () => { state.level = b.dataset.level; syncLevelUI(); save(); };
+});
+
+minRange.oninput = () => {
+  state.minMin = +minRange.value;
+  if (state.minMin >= state.maxMin) { state.maxMin = state.minMin + 1; maxRange.value = state.maxMin; maxVal.textContent = state.maxMin; }
+  minVal.textContent = state.minMin; save();
+};
+maxRange.oninput = () => {
+  state.maxMin = +maxRange.value;
+  if (state.maxMin <= state.minMin) { state.minMin = state.maxMin - 1; minRange.value = state.minMin; minVal.textContent = state.minMin; }
+  maxVal.textContent = state.maxMin; save();
+};
+maxPeopleRange.oninput = () => { state.maxPeople = +maxPeopleRange.value; maxPeopleVal.textContent = state.maxPeople; save(); };
+allowEveryone.onchange = () => { state.allowEveryone = allowEveryone.checked; save(); };
+useVoice.onchange = () => { state.useVoice = useVoice.checked; save(); };
+
+/* ===================== VOICE ===================== */
+let jaVoice = null;
+function pickVoice() {
+  const voices = speechSynthesis.getVoices();
+  jaVoice = voices.find(v => v.lang === 'ja-JP') || voices.find(v => v.lang && v.lang.startsWith('ja')) || null;
+}
+if ('speechSynthesis' in window) {
+  pickVoice();
+  speechSynthesis.onvoiceschanged = pickVoice;
+}
+function speak(text) {
+  if (!state.useVoice || !('speechSynthesis' in window)) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ja-JP';
+    if (jaVoice) u.voice = jaVoice;
+    u.rate = 1.0; u.pitch = 1.05; u.volume = 1;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+/* ===== WebAudio SFX (ガキ使 罰ゲーム風) ===== */
+let audioCtx = null;
+function ac() {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq, start, dur, type, vol) {
+  const c = ac();
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type || 'square'; o.frequency.value = freq;
+  o.connect(g); g.connect(c.destination);
+  const t = c.currentTime + start;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol || 0.3, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+
+/* short chime to unlock audio on first gesture */
+function chime() {
+  try { [660, 990].forEach((f, i) => tone(f, i * 0.12, 0.14, 'triangle', 0.25)); } catch (e) {}
+}
+
+/* suspense: accelerating "ticking" drumroll, ~SECONDS long */
+function suspense(seconds) {
+  try {
+    const c = ac();
+    let t = 0, gap = 0.22;
+    while (t < seconds) {
+      tone(440, t, 0.05, 'square', 0.18);
+      t += gap;
+      gap = Math.max(0.05, gap * 0.86); // accelerate
+    }
+    // rising tension pad
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sawtooth';
+    o.connect(g); g.connect(c.destination);
+    const start = c.currentTime;
+    o.frequency.setValueAtTime(180, start);
+    o.frequency.linearRampToValueAtTime(520, start + seconds);
+    g.gain.setValueAtTime(0.0001, start);
+    g.gain.linearRampToValueAtTime(0.12, start + seconds);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + seconds + 0.05);
+    o.start(start); o.stop(start + seconds + 0.06);
+  } catch (e) {}
+}
+
+/* the "OUT" buzzer — harsh descending double-honk */
+function buzzer() {
+  try {
+    // big hit
+    tone(160, 0, 0.45, 'square', 0.4);
+    tone(120, 0, 0.45, 'sawtooth', 0.35);
+    // classic "bu-buu" honk
+    tone(330, 0.5, 0.18, 'square', 0.35);
+    tone(247, 0.72, 0.4, 'square', 0.38);
+  } catch (e) {}
+}
+
+/* ===================== GAME LOOP ===================== */
+const playEl = $('play');
+let timer = null, startTime = 0, elapsedTimer = null, callCount = 0, wakeLock = null;
+const history = [];
+
+function rand(min, max) { return Math.random() * (max - min) + min; }
+function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = randInt(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function decidePeople() {
+  const total = state.members.length;
+  const everyoneChance = (LEVELS[state.level] || LEVELS.normal).everyone;
+  // EVERYONE イベント（有効かつ2人以上のとき、レベル依存の確率）
+  if (state.allowEveryone && total >= 2 && Math.random() < everyoneChance) {
+    return { everyone: true, names: state.members.slice() };
+  }
+  const cap = Math.min(state.maxPeople, total);
+  const soloChance = (LEVELS[state.level] || LEVELS.normal).solo;
+  // 1人指名の確率はレベル依存（酒豪ほど複数人が出やすい）
+  let count = 1;
+  if (cap > 1) {
+    if (Math.random() < soloChance) count = 1;
+    else count = randInt(2, cap);
+  }
+  return { everyone: false, names: shuffle(state.members).slice(0, count) };
+}
+
+const SUSPENSE_SEC = 2.2;
+let suspenseTimer = null;
+
+/* 罰の重さを抽選：通常アウト / 低確率で半分一気・一気飲み（確率はレベル依存） */
+function decidePenalty() {
+  const L = LEVELS[state.level] || LEVELS.normal;
+  const r = Math.random();
+  if (r < L.ikki) return { key: 'ikki', label: '🍺🍺 一気飲み！', speech: '一気！一気！一気！' };
+  if (r < L.half) return { key: 'half', label: '🍺 半分 一気！', speech: '半分、一気！' };
+  return { key: 'normal', label: '', speech: '' };
+}
+
+function announce() {
+  const pick = decidePeople();
+
+  const reveal = $('revealName'), sub = $('revealSub'), status = $('statusLine'),
+        dots = $('nextDots'), glass = $('glassIcon'), stamp = $('outStamp');
+
+  // --- BUILD-UP (ためる) ---
+  status.classList.remove('pulse');
+  status.textContent = 'まもなく…発表';
+  status.classList.add('tense');
+  dots.textContent = '';
+  reveal.style.display = 'none';
+  sub.style.display = 'none';
+  stamp.classList.remove('show');
+  glass.style.display = 'block';
+  glass.textContent = '🥁';
+  suspense(SUSPENSE_SEC);
+
+  clearTimeout(suspenseTimer);
+  suspenseTimer = setTimeout(() => hit(pick), SUSPENSE_SEC * 1000);
+}
+
+function hit(pick) {
+  callCount++;
+  $('countPill').textContent = '登場回数 ' + callCount;
+
+  const reveal = $('revealName'), sub = $('revealSub'), status = $('statusLine'),
+        glass = $('glassIcon'), stamp = $('outStamp');
+
+  // sound + screen effects
+  buzzer();
+  const f = $('flash'); f.classList.remove('hit'); void f.offsetWidth; f.classList.add('hit');
+  playEl.classList.add('alert', 'shake');
+  setTimeout(() => playEl.classList.remove('shake'), 500);
+  if (navigator.vibrate) navigator.vibrate([80, 50, 120]);
+
+  status.classList.remove('tense');
+  status.textContent = '判定…';
+  glass.style.display = 'none';
+
+  // ストック加算対象として、呼ばれた人を記録
+  lastPickNames = pick.everyone ? state.members.slice() : pick.names.slice();
+
+  // 指名対象（表示名・読み上げ用の呼びかけ）
+  let displayName, callPhrase, baseSub;
+  if (pick.everyone) {
+    displayName = '🍻 全員 🍻';
+    callPhrase = '全員、アウトー！';
+    baseSub = '全員アウトー！';
+  } else if (pick.names.length === 1) {
+    displayName = pick.names[0];
+    callPhrase = `${pick.names[0]}さん、アウトー！`;
+    baseSub = 'アウトー！';
+  } else {
+    displayName = pick.names.join('・');
+    callPhrase = `${pick.names.join('、')}さん、まとめてアウトー！`;
+    baseSub = `${pick.names.length}人まとめてアウトー！`;
+  }
+
+  // 罰の重さを上乗せ（低確率で 半分一気 / 一気飲み）
+  const penalty = decidePenalty();
+  const isSpecial = penalty.key !== 'normal';
+  const displaySub = isSpecial ? `${baseSub}　${penalty.label}` : baseSub;
+  const speech = isSpecial ? `${callPhrase} ${penalty.speech}` : callPhrase;
+
+  // 一気飲み・半分一気は演出を強める
+  if (isSpecial) {
+    if (navigator.vibrate) navigator.vibrate([100, 60, 100, 60, 200]);
+    setTimeout(buzzer, 350); // ブザー追い打ち
+    stamp.textContent = penalty.key === 'ikki' ? '一気ーッ！' : '半分一気！';
+  } else {
+    stamp.textContent = 'アウトー！';
+  }
+
+  // AUTO stamp
+  stamp.classList.remove('show'); void stamp.offsetWidth; stamp.classList.add('show');
+
+  reveal.style.display = 'block';
+  sub.style.display = 'block';
+  reveal.textContent = displayName;
+  sub.textContent = displaySub;
+  reveal.classList.remove('pop'); void reveal.offsetWidth; reveal.classList.add('pop');
+
+  // speak "アウトー！" then the name, slightly after the buzzer
+  setTimeout(() => speak(speech), 900);
+
+  history.unshift({ t: fmtTime(Date.now() - startTime), label: displayName });
+  renderHistory();
+
+  // 演出が終わってから休憩（1分）に入る
+  setTimeout(() => { if (playEl.classList.contains('show')) startInterval(); }, 2600);
+}
+
+function renderHistory() {
+  const h = $('history');
+  h.innerHTML = history.slice(0, 8).map(x => `<div class="history-item">${x.t} <b>${escapeHtml(x.label)}</b></div>`).join('');
+}
+function escapeHtml(s) { return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+/* 待機状態（次は誰だ…？）に戻す */
+function resetToWaiting() {
+  $('revealName').style.display = 'none';
+  $('revealSub').style.display = 'none';
+  $('outStamp').classList.remove('show');
+  playEl.classList.remove('alert');
+  const glass = $('glassIcon');
+  glass.style.display = 'block';
+  glass.textContent = '🍺';
+  const status = $('statusLine');
+  status.classList.remove('tense');
+  status.textContent = '次は誰だ…？';
+  status.classList.add('pulse');
+  $('nextDots').textContent = '• • •';
+}
+
+function scheduleNext() {
+  clearTimeout(timer);
+  const cap = (LEVELS[state.level] || LEVELS.normal).maxCap || state.maxMin;
+  const effMaxMin = Math.min(state.maxMin, cap);            // レベル上限でキャップ
+  const effMinMin = Math.min(state.minMin, effMaxMin);      // 最短が上限を超えないよう調整
+  const delay = rand(effMinMin * 60 * 1000, effMaxMin * 60 * 1000);
+  timer = setTimeout(announce, delay);
+}
+
+/* ===== アウト後の「飲む・注ぐタイム」（1分）：飲んだ→再開 / ストック（後で飲む分を加算）を選べる =====
+   ストック = 今は飲めない人が「あとで飲む杯数」を貯めておくカウント */
+const INTERVAL_SEC = 60;
+let intervalTimer = null, intervalRemaining = 0;
+let lastPickNames = [];           // 直近に呼ばれた人（ストック加算対象）
+const stocks = {};                // { 名前: 後で飲む杯数 }
+
+function clearIntervalState() {
+  clearInterval(intervalTimer);
+  intervalTimer = null;
+  $('intervalPanel').style.display = 'none';
+}
+
+function startInterval() {
+  if (!playEl.classList.contains('show')) return;
+  clearTimeout(timer);
+  clearInterval(intervalTimer);
+  intervalRemaining = INTERVAL_SEC;
+  $('intervalPanel').style.display = 'block';
+  updateIntervalLabel();
+  intervalTimer = setInterval(() => {
+    intervalRemaining--;
+    if (intervalRemaining <= 0) { resumeGame(); return; } // 無入力 → 自動再開（飲んだ扱い）
+    updateIntervalLabel();
+  }, 1000);
+}
+
+function updateIntervalLabel() {
+  const who = lastPickNames.length ? `${lastPickNames.join('・')}　` : '';
+  $('intervalCount').textContent = `🍶 飲む・注ぐタイム　${who}あと ${intervalRemaining} 秒で自動再開`;
+}
+
+/* ストック：今は飲めない → 呼ばれた人の「後で飲む杯数」を+1して再開 */
+function stockOut() {
+  lastPickNames.forEach(n => { stocks[n] = (stocks[n] || 0) + 1; });
+  renderStocks();
+  resumeGame();
+}
+
+/* 再開：飲んだ → 記録せず次の呼び出しへ */
+function resumeGame() {
+  clearIntervalState();
+  resetToWaiting();
+  scheduleNext();
+}
+
+function renderStocks() {
+  const entries = Object.entries(stocks).filter(([, c]) => c > 0);
+  const el = $('stockList');
+  if (!entries.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="stock-title">📥 ストック（後で飲む）</div>' +
+    entries.sort((a, b) => b[1] - a[1])
+      .map(([n, c]) => `<span class="stock-pill">${escapeHtml(n)} <b>${c}</b>杯</span>`).join('');
+}
+
+function fmtTime(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+async function requestWakeLock() {
+  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+}
+function releaseWakeLock() { try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {} }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && playEl.classList.contains('show')) requestWakeLock();
+});
+
+function startGame() {
+  if (state.members.length < 2) return;
+  // unlock audio + voice on user gesture
+  chime();
+  if ('speechSynthesis' in window) { speak(' '); }
+  callCount = 0; history.length = 0;
+  for (const k in stocks) delete stocks[k];   // ストックをリセット
+  lastPickNames = [];
+  clearIntervalState();
+  renderStocks();
+  startTime = Date.now();
+  renderHistory();
+  $('countPill').textContent = '登場回数 0';
+  $('revealName').style.display = 'none';
+  $('revealSub').style.display = 'none';
+  $('outStamp').classList.remove('show');
+  $('glassIcon').style.display = 'block';
+  $('glassIcon').textContent = '🍺';
+  $('statusLine').textContent = '次は誰だ…？';
+  $('statusLine').classList.remove('tense');
+  $('statusLine').classList.add('pulse');
+  $('nextDots').textContent = '• • •';
+  playEl.classList.remove('alert');
+  playEl.classList.add('show');
+  requestWakeLock();
+  // elapsed timer
+  elapsedTimer = setInterval(() => {
+    $('elapsedPill').textContent = '経過 ' + fmtTime(Date.now() - startTime);
+  }, 1000);
+  scheduleNext();
+}
+
+function stopGame() {
+  clearTimeout(timer);
+  clearTimeout(suspenseTimer);
+  clearInterval(elapsedTimer);
+  clearIntervalState();
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  playEl.classList.remove('show', 'alert', 'shake');
+  releaseWakeLock();
+}
+
+$('startBtn').onclick = startGame;
+$('stopBtn').onclick = stopGame;
+$('stockBtn').onclick = stockOut;
+$('resumeBtn').onclick = resumeGame;
+$('nowBtn').onclick = () => { clearTimeout(timer); clearTimeout(suspenseTimer); clearIntervalState(); announce(); };
+
+/* ===================== INIT ===================== */
+load();
+syncSettingsUI();
+afterMembersChange();
+</script>
+</body>
+</html>

@@ -47,18 +47,24 @@
   }
   header {
     text-align: center;
-    padding: 22px 0 10px;
+    padding: 26px 0 10px;
   }
   header h1 {
     margin: 0;
-    font-size: 28px;
+    font-size: clamp(34px, 9vw, 48px);
     letter-spacing: 0.04em;
     background: linear-gradient(90deg, var(--accent), var(--accent2));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
-  header p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+  header p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+  .manual-btn {
+    margin: 14px auto 0; display: inline-flex; align-items: center; gap: 6px;
+    background: var(--card2); color: var(--text); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 999px; padding: 9px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .manual-btn:active { transform: scale(0.96); }
 
   .card {
     background: var(--card);
@@ -164,7 +170,7 @@
   .toggle input:checked ~ .track { background: var(--accent); }
   .toggle input:checked ~ .thumb { transform: translateX(22px); }
 
-  .start-wrap { margin-top: auto; padding-top: 8px; }
+  .start-wrap { margin-top: 8px; padding-top: 8px; }
   .btn-start {
     width: 100%; font-size: 20px; padding: 18px;
     background: linear-gradient(90deg, var(--accent), var(--accent2));
@@ -183,6 +189,11 @@
   #play.show { display: flex; }
   .play-top { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; }
   .pill { background: rgba(255,255,255,0.08); border-radius: 999px; padding: 6px 14px; font-size: 13px; color: var(--muted); }
+  .keep-note {
+    margin-top: 10px; text-align: center; font-size: 12px; line-height: 1.5;
+    color: var(--accent2); background: rgba(255,210,61,0.1);
+    border: 1px solid rgba(255,210,61,0.3); border-radius: 10px; padding: 7px 10px;
+  }
   .stage {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
     text-align: center; gap: 18px;
@@ -211,8 +222,11 @@
     position: fixed; inset: 0; z-index: 60; background: #ff1f3d;
     opacity: 0; pointer-events: none;
   }
-  #flash.hit { animation: flash .5s ease-out; }
-  @keyframes flash { 0% { opacity: .9; } 100% { opacity: 0; } }
+  #flash.hit { animation: flash 1.4s ease-out; }
+  @keyframes flash {
+    0% { opacity: .92; } 18% { opacity: .15; } 36% { opacity: .85; }
+    54% { opacity: .15; } 72% { opacity: .7; } 100% { opacity: 0; }
+  }
 
   /* AUTO / アウト stamp */
   .out-stamp {
@@ -274,6 +288,32 @@
 
   .hint { text-align: center; color: var(--muted); font-size: 12px; margin-top: 14px; line-height: 1.6; }
   a { color: var(--cyan); }
+
+  /* 取説モーダル */
+  #manual {
+    position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,0.65);
+    display: none; align-items: center; justify-content: center; padding: 16px;
+  }
+  #manual.show { display: flex; }
+  .manual-panel {
+    background: var(--card); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 18px; width: 100%; max-width: 520px; max-height: 86dvh;
+    overflow-y: auto; padding: 22px;
+  }
+  .manual-panel h2 {
+    margin: 0 0 4px; font-size: 22px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .manual-panel h3 { margin: 18px 0 6px; font-size: 15px; color: var(--cyan); }
+  .manual-panel p, .manual-panel li { font-size: 14px; line-height: 1.7; color: var(--text); }
+  .manual-panel ul { margin: 4px 0; padding-left: 1.2em; }
+  .manual-panel .muted { color: var(--muted); font-size: 13px; }
+  .manual-close {
+    width: 100%; margin-top: 20px; border: none; border-radius: 12px; cursor: pointer;
+    padding: 14px; font-size: 16px; font-weight: 700; color: #1a0a14;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
 </style>
 </head>
 <body>
@@ -281,6 +321,7 @@
   <header>
     <h1>🍻 飲みゲールーレット</h1>
     <p>ランダムな時間に、ランダムな人を呼び上げる。呼ばれたら…飲め！</p>
+    <button class="manual-btn" id="manualBtn" type="button">📖 遊び方（取説）</button>
   </header>
 
   <div class="card">
@@ -343,6 +384,8 @@
     <span class="pill" id="countPill">登場回数 0</span>
   </div>
 
+  <div class="keep-note">📌 この画面のまま置いてね（他アプリに切替・画面オフで止まります）</div>
+
   <div class="stage">
     <div class="status-line pulse" id="statusLine">次は誰だ…？</div>
     <div class="next-dots" id="nextDots"></div>
@@ -369,6 +412,64 @@
   <div class="play-controls">
     <button class="btn btn-accent" id="nowBtn">今すぐ呼ぶ ⚡</button>
     <button class="btn btn-stop" id="stopBtn">やめる ■</button>
+  </div>
+</div>
+
+<!-- 取説モーダル -->
+<div id="manual">
+  <div class="manual-panel">
+    <h2>📖 飲みゲールーレット 取扱説明書</h2>
+    <p class="muted">スマホをテーブルに置いて、みんなで遊ぶ罰ゲーム系アプリです。</p>
+
+    <h3>① メンバーを登録</h3>
+    <ul>
+      <li>名前を入力して「追加」。<b>2人以上</b>で「スタート」できます。</li>
+      <li>メンバーは保存されません（毎回入力）。</li>
+    </ul>
+
+    <h3>② 設定（3つだけ）</h3>
+    <ul>
+      <li><b>レベル</b>：🍵小酒／🍺普通／🔥酒豪。お酒の強さ＝一気・全員アウトの出やすさと呼び出し間隔が変わる（小酒は最大15分・酒豪は最大5分間隔）。</li>
+      <li><b>1回に呼ぶ最大人数</b>：1人〜この人数の間でランダムに呼ぶ（まれに全員）。</li>
+      <li><b>完全ストックモード</b>：ONにすると、その場では飲まずアウトを全部「ストック」に自動加算。後でまとめて消化する遊び方。</li>
+    </ul>
+
+    <h3>③ スタート後の流れ</h3>
+    <ul>
+      <li>ランダムな時間（最短1秒〜レベル上限）が経つと、効果音「デデーン！」が鳴り、少し後に名前を読み上げて<b>アウト！</b></li>
+      <li>呼ばれた人が飲む。低確率で<b>半分一気</b>や<b>一気飲み</b>に昇格することも。</li>
+      <li>ランダムで全員が当たると「<b>全員アウト！</b>」。</li>
+    </ul>
+
+    <h3>④ アウトのあと（飲む・注ぐタイム）</h3>
+    <ul>
+      <li>最大1分間、2択：<b>🍺飲んだ（再開）</b>／<b>📥ストック（後で飲む）</b>。</li>
+      <li>1分なにも押さなければ自動で次へ。</li>
+      <li>ストック量：通常+1／半分一気+2／一気飲み+4。画面上のバッジを<b>タップで-1</b>消化できます。</li>
+    </ul>
+
+    <h3>⑤ コール 📣</h3>
+    <ul>
+      <li>プレイ中の「📣 コール！」ボタンは<b>いつでも</b>押せて、登録コールをランダム再生します。</li>
+    </ul>
+
+    <h3>⑥ その他</h3>
+    <ul>
+      <li>「今すぐ呼ぶ ⚡」で即発動、「やめる ■」で終了。</li>
+      <li>スマホは「ホーム画面に追加」でアプリのように全画面起動できます。</li>
+    </ul>
+
+    <h3>⚠️ うまく動かすコツ（重要）</h3>
+    <ul>
+      <li>このアプリは<b>画面を開いたまま・前面の状態</b>で使ってください（テーブルに置く“中央係”の1台に）。</li>
+      <li><b>別のアプリに切り替えたり、ホーム画面に戻ると</b>、ブラウザがバックグラウンドになり、<b>タイマーが止まって名前が呼ばれなくなります</b>（スマホOSの仕様）。戻すと再開します。</li>
+      <li><b>画面を手動で消す（スリープ/ロック）と止まる</b>ことがあります。自動スリープは防ぐ設定にしていますが、手動オフまでは防げません。</li>
+      <li>そのため「同じ1台で、飲みゲーを裏で動かしつつ別のスマホゲームをする」はできません。別ゲームは<b>別の端末</b>か、トランプなど<b>画面を使わない遊び</b>と併用するのがおすすめです。</li>
+      <li>マナーモード時は音が出ないことがあります（特に iPhone）。</li>
+    </ul>
+
+    <p class="muted">⚠️ 飲みすぎ注意・20歳未満は飲酒できません。体調に合わせて無理なく楽しんでね。</p>
+    <button class="manual-close" id="manualClose" type="button">とじる</button>
   </div>
 </div>
 
@@ -556,11 +657,27 @@ const TEXT_CALLS = [
   'ぐいっと いっぱい いってみよう！',
 ];
 
+// デデーン（buzzer）は大きく鳴らすため WebAudio バッファとしても読み込む
+let buzzerBuffer = null;
+async function loadBuzzerBuffer() {
+  if (buzzerBuffer) return;
+  for (const ext of CLIP_EXTS) {
+    try {
+      const res = await fetch(`audio/buzzer.${ext}`);
+      if (!res.ok) continue;
+      const arr = await res.arrayBuffer();
+      buzzerBuffer = await ac().decodeAudioData(arr);
+      return;
+    } catch (e) { /* 次の拡張子へ */ }
+  }
+}
+
 function preloadClips() {
   CLIP_KEYS.concat(CALL_KEYS).forEach(key => {
     if (key in clips) return;          // 判定済みはスキップ
     tryLoadClip(key, 0);
   });
+  loadBuzzerBuffer();
 }
 
 /* コール：登録済みコールからランダム再生（音源優先・無ければ内蔵テキストをTTS） */
@@ -634,7 +751,18 @@ function suspense(seconds) {
 
 /* the "OUT" buzzer — harsh descending double-honk */
 function buzzer() {
-  if (playClip('buzzer')) return; // 同梱ファイルがあればそれを使う
+  // ① デデーン音源を WebAudio で大きめに再生（音量ブースト）
+  if (buzzerBuffer) {
+    try {
+      const c = ac();
+      const src = c.createBufferSource(); src.buffer = buzzerBuffer;
+      const g = c.createGain(); g.gain.value = 2.0; // 一段大きく
+      src.connect(g); g.connect(c.destination); src.start();
+      return;
+    } catch (e) { /* フォールバックへ */ }
+  }
+  // ② バッファ未準備なら通常再生
+  if (playClip('buzzer')) return;
   try {
     // big hit
     tone(160, 0, 0.45, 'square', 0.4);
@@ -717,7 +845,7 @@ function hit(names) {
   const f = $('flash'); f.classList.remove('hit'); void f.offsetWidth; f.classList.add('hit');
   playEl.classList.add('alert', 'shake');
   setTimeout(() => playEl.classList.remove('shake'), 500);
-  if (navigator.vibrate) navigator.vibrate([80, 50, 120]);
+  if (navigator.vibrate) navigator.vibrate([250, 90, 250, 90, 350]);
 
   status.classList.remove('tense');
   status.textContent = '判定…';
@@ -754,7 +882,7 @@ function hit(names) {
 
   // 一気飲み・半分一気は演出を強める（デデーンが重ならないよう追い打ちはしない）
   if (isSpecial) {
-    if (navigator.vibrate) navigator.vibrate([100, 60, 100, 60, 200]);
+    if (navigator.vibrate) navigator.vibrate([400, 120, 400, 120, 600]);
     stamp.textContent = penalty.key === 'ikki' ? '一気ーッ！' : '半分一気！';
   } else {
     stamp.textContent = 'アウトー！';
@@ -777,9 +905,9 @@ function hit(names) {
     (hasClip('out') ? 'out' : null);
   // デデーン（buzzer）が鳴り終わってから名前を呼ぶ（被らないように音源の長さに合わせる）
   const bclip = clips['buzzer'];
-  const buzzerMs = (bclip instanceof Audio && bclip.duration && isFinite(bclip.duration))
-    ? bclip.duration * 1000 + 250  // 音源長 + 少し余白
-    : 1400;                         // 合成ブザー時のフォールバック
+  const buzzerSec = buzzerBuffer ? buzzerBuffer.duration
+    : (bclip instanceof Audio && isFinite(bclip.duration) ? bclip.duration : null);
+  const buzzerMs = buzzerSec ? buzzerSec * 1000 + 250 : 1400;
   setTimeout(() => {
     if (voiceKey) {
       // 名前を読み上げてから、録音した掛け声を再生
@@ -973,6 +1101,9 @@ $('stopBtn').onclick = stopGame;
 $('stockBtn').onclick = stockOut;
 $('resumeBtn').onclick = resumeGame;
 $('callBtn').onclick = playCall;
+$('manualBtn').onclick = () => $('manual').classList.add('show');
+$('manualClose').onclick = () => $('manual').classList.remove('show');
+$('manual').onclick = (e) => { if (e.target === $('manual')) $('manual').classList.remove('show'); };
 $('nowBtn').onclick = () => { clearTimeout(timer); clearTimeout(suspenseTimer); clearIntervalState(); announce(); };
 
 /* ===================== INIT ===================== */
